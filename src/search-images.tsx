@@ -14,6 +14,7 @@ import { writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { showFailureToast } from "@raycast/utils";
 
 interface ImageResult {
   link: string;
@@ -92,38 +93,32 @@ export default function Command() {
               <Action
                 title="Copy Image to Clipboard"
                 onAction={async () => {
-                  showToast({
-                    title: "Copying image to clipboard...",
-                    style: Toast.Style.Animated,
-                  });
-                  const data = await fetch(image.link);
-                  const buffer = Buffer.from(await data.arrayBuffer());
-                  // get temp directory
-                  const tempDir = await os.tmpdir();
-                  console.log(tempDir);
-                  const tempFile = path.join(tempDir, randomUUID() + (image.link.split("/").pop() || ".png"));
-                  console.log(tempFile);
-                  await writeFile(tempFile, buffer);
-
                   try {
+                    showToast({
+                      title: "Copying image to clipboard...",
+                      style: Toast.Style.Animated,
+                    });
+
+                    const data = await fetch(image.link);
+                    const buffer = Buffer.from(await data.arrayBuffer());
+                    const tempDir = os.tmpdir();
+                    const tempFileName = `${randomUUID()}${image.link.split("/").pop() || ".png"}`;
+                    const tempFile = path.join(tempDir, tempFileName);
+                    await writeFile(tempFile, buffer);
+
                     Clipboard.copy({
                       file: tempFile,
                     });
+
+                    closeMainWindow();
 
                     await showToast({
                       title: "Image copied to clipboard",
                       style: Toast.Style.Success,
                     });
-
-                    await showHUD("Image copied to clipboard");
-
-                    closeMainWindow();
                   } catch (error) {
-                    console.error("Error copying image to clipboard:", error);
-
-                    await showToast({
+                    await showFailureToast(error, {
                       title: "Error copying image to clipboard",
-                      style: Toast.Style.Failure,
                     });
                   }
                 }}
